@@ -18,6 +18,7 @@ class ApproachClient:
     def __init__(self) -> None:
 
         topic_root = "/" + os.getenv("MIRO_ROBOT_NAME")
+        rospy.init_node("approach", anonymous=True)
 
         # PUBLISHERS
         self.pub_cmd_vel = rospy.Publisher(
@@ -35,9 +36,9 @@ class ApproachClient:
     def body_pose(self, data):
         print(data)
 
-    def loop():
+    def loop(self):
         while not rospy.core.is_shutdown():
-            break
+            self.body_pose
 
 
 
