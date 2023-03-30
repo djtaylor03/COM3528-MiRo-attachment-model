@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="COM3528-MiRo-attachment-model" type="approach" name="approach" output="screen">
+    </node>
+</launch>
