@@ -2,7 +2,7 @@
 
 from lib2to3.pgen2.literals import test
 import os
-from math import factorial, radians, atan2
+from math import factorial, radians, atan2, sqrt
 import numpy as np
 import random
 from miro2.lib.types import Pose
@@ -19,8 +19,9 @@ from miro2.lib import wheel_speed2cmd_vel
 
 class MiRo_attachment:
     TICK = 0.005
-    SLOW = 0.1
+    SLOW = 0.2
     FAST = 0.4
+    TURN = 0.05
     NODE_EXISTS = False
 
     def __init__(self):
@@ -87,7 +88,7 @@ class MiRo_attachment:
         # higher values will make trait more apparent
 
         self.epsilonAv = 0.0 # range [-0.1, \infty] 
-        self.epsilonAm = 0.0 # range [-0.1, 0.9]
+        self.epsilonAm = 0.8 # range [-0.1, 0.9]
 
         self.b = 0.5
         self.e = 1.0
@@ -105,8 +106,10 @@ class MiRo_attachment:
         self.x0 = self.x = 0
         self.y0 = self.y = 0
         self.theta0 = self.theta = 0
+        self.first_odom = True
 
         self.facing_origin = False
+        self.on_origin = False
 
         #-----------------------------------------#
         #explore related init
@@ -185,6 +188,12 @@ class MiRo_attachment:
         self.y = data.pose.pose.position.y
         (_, _, self.theta) = euler_from_quaternion([orientation.x, orientation.y, orientation.z, orientation.w], 'sxyz')
 
+        if self.first_odom and self.x!=0:
+            self.x0 = self.x
+            self.y0 = self.y
+            self.theta0 = self.theta
+            self.first_odom = False
+
 
     #PUT APPROACH HERE############
     def approach(self):
@@ -196,41 +205,45 @@ class MiRo_attachment:
 
         angle_to_origin = atan2(inc_y, inc_x)
         if (abs(angle_to_origin - self.theta) > 0.1) and not self.facing_origin:
-            self.drive(self.SLOW, 0)
+            self.drive(self.TURN, 0)
         else:
             self.facing_origin = True
             self.drive(self.FAST, self.FAST)
-
+            print (inc_x, inc_y)
+            if abs(inc_x) < 0.2 and abs(inc_y) < 0.2:
+                self.on_origin = True
+                self.drive(0, 0)
         
         rospy.sleep(0.2)
-        print (angle_to_origin - self.theta)
+        print (angle_to_origin, self.theta, angle_to_origin - self.theta)
         
 #-----------------------------------------#
     #explore related methods
     def explore(self):
         self.facing_origin = False
-        if self.rand == 0 or self.rand == 1:
+        self.on_origin = False
+        if self.rand == 0:
+            if self.attachment == "secure":
+                self.drive(-self.SLOW, self.SLOW)
+            elif self.attachment == "avoidant":
+                self.drive(self.TURN, self.SLOW)
+            else:
+                self.drive(-self.TURN, self.TURN)
+        elif self.rand == 1:
+            if self.attachment == "secure":
+                self.drive(self.SLOW, -self.SLOW)
+            elif self.attachment == "avoidant":
+                self.drive(self.SLOW, self.TURN)
+            else:
+                self.drive(self.TURN, -self.TURN)
+        else:
             if self.attachment == "secure":
                 self.drive(self.FAST, self.FAST)
             else:
                 self.drive(self.SLOW, self.SLOW)
-        elif self.rand == 2: 
-            if self.attachment == "secure":
-                self.drive(-self.FAST, self.FAST)
-            elif self.attachment == "avoidant":
-                self.drive(self.SLOW, self.FAST)
-            else:
-                self.drive(-self.SLOW, self.SLOW)
-        else:
-            if self.attachment == "secure":
-                self.drive(self.FAST, -self.FAST)
-            elif self.attachment == "avoidant":
-                self.drive(self.FAST, self.SLOW)
-            else:
-                self.drive(self.SLOW, -self.SLOW)
         if self.counter > self.timer:
-            self.rand = random.randint(0, 3)
-            self.timer = random.randint(1, 100)
+            self.rand = random.randint(0, 10)
+            self.timer = random.randint(100, 200)
             self.counter = 0
 
 
@@ -242,7 +255,7 @@ class MiRo_attachment:
 
         #explore loop counters
         self.counter = 0
-        self.rand = 0
+        self.rand = 3
         self.timer = 50
 
         self.status_code = 0
@@ -276,7 +289,7 @@ class MiRo_attachment:
                 #print("explore     edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
                 self.edist +=0.01
-                self.pdist +=0.01
+                
                 # self.drive(0.4,0.4)
 
                 self.explore()
@@ -289,12 +302,15 @@ class MiRo_attachment:
                 # Approach
                 #print("approach   edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
-                self.pdist -= 0.01
+                
                 # self.drive(0,0)
                 # self.drive(0.4,0.4)
                 # print(self.need)
 
-                self.approach()
+                if not self.on_origin:
+                    self.approach()
+
+            self.pdist = sqrt((self.x-self.x0)**2 + (self.y-self.y0)**2)
 
             try:
                 if self.pdist > 5:
