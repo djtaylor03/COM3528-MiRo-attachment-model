@@ -1,5 +1,6 @@
 <launch>
     <node pkg="miro_attachment" type="attachment.py" name="attach" output="screen">
+        <param name="test1" value="test"/>
     </node>
 </launch>
 

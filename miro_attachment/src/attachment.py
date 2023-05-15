@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 
+from lib2to3.pgen2.literals import test
 import os
-from math import radians
+from math import factorial, radians, atan2
 import numpy as np
 import random
+from miro2.lib.types import Pose
 
 
 import rospy
-from geometry_msgs.msg import TwistStamped, Pose2D
+from geometry_msgs.msg import TwistStamped
 from std_msgs.msg import UInt16
+from nav_msgs.msg import Odometry
+from tf.transformations import euler_from_quaternion
 
 import miro2
 from miro2.lib import wheel_speed2cmd_vel
@@ -43,12 +47,18 @@ class MiRo_attachment:
         )
 
         #body pose
+        # rospy.Subscriber(
+        #     topic_base_name + "/sensors/body_pose", Pose2D, self.body_pose
+        # )
+
+        #body pose (to replace?)
         rospy.Subscriber(
-            topic_base_name + "/sensors/body_pose", Pose2D, self.body_pose
+            topic_base_name + "/sensors/odom", Odometry, self.body_pose_2
         )
 
         #-----------------------------------------#
         #publishers
+        #movement
         self.vel_pub = rospy.Publisher(
             topic_base_name + "/control/cmd_vel", TwistStamped, queue_size=0
         )
@@ -61,7 +71,6 @@ class MiRo_attachment:
         #-----------------------------------------#
         #care related init
 
-        # Move the head to default pose
         self.touch_data = [None, None] # head and body
         self.edist = 0
         self.pdist = 0
@@ -78,7 +87,7 @@ class MiRo_attachment:
         # higher values will make trait more apparent
 
         self.epsilonAv = 0.0 # range [-0.1, \infty] 
-        self.epsilonAm = 0.5 # range [-0.1, 0.9]
+        self.epsilonAm = 0.0 # range [-0.1, 0.9]
 
         self.b = 0.5
         self.e = 1.0
@@ -92,9 +101,12 @@ class MiRo_attachment:
 
         rospy.sleep(2.0)
         #init initial pose
-        self.theta0 = self.theta
-        self.x0 = self.x
-        self.y0 = self.y
+        #self.theta0 = self.theta
+        self.x0 = self.x = 0
+        self.y0 = self.y = 0
+        self.theta0 = self.theta = 0
+
+        self.facing_origin = False
 
         #-----------------------------------------#
         #explore related init
@@ -158,19 +170,45 @@ class MiRo_attachment:
 
 #-----------------------------------------#
     #approach related methods
-    def body_pose(self, data):
-        self.theta = data.theta
-        self.x = data.x
-        self.y = data.y
+    # def body_pose(self, data):
+    #     self.theta = data.theta
+    #     self.x = data.x
+    #     self.y = data.y
+
+    def body_pose_2(self, data):
+        #self.theta = data.orientation.theta
+        # self.x = data.position.x
+        # self.y = data.position.y
+
+        orientation = data.pose.pose.orientation
+        self.x = data.pose.pose.position.x
+        self.y = data.pose.pose.position.y
+        (_, _, self.theta) = euler_from_quaternion([orientation.x, orientation.y, orientation.z, orientation.w], 'sxyz')
+
 
     #PUT APPROACH HERE############
     def approach(self):
+
         print ("approaching")
 
+        inc_x = self.x0-self.x
+        inc_y = self.y0-self.y
+
+        angle_to_origin = atan2(inc_y, inc_x)
+        if (abs(angle_to_origin - self.theta) > 0.1) and not self.facing_origin:
+            self.drive(self.SLOW, 0)
+        else:
+            self.facing_origin = True
+            self.drive(self.FAST, self.FAST)
+
+        
+        rospy.sleep(0.2)
+        print (angle_to_origin - self.theta)
         
 #-----------------------------------------#
     #explore related methods
     def explore(self):
+        self.facing_origin = False
         if self.rand == 0 or self.rand == 1:
             if self.attachment == "secure":
                 self.drive(self.FAST, self.FAST)
@@ -200,19 +238,16 @@ class MiRo_attachment:
     #loop
     def loop(self):
         
-
-
-        ###play
-        # Main control loop iteration counter
+        # Main control loop
 
         #explore loop counters
         self.counter = 0
         self.rand = 0
         self.timer = 50
 
-        # This switch loops through MiRo behaviours:
-        # Find ball, lock on to the ball and kick ball
         self.status_code = 0
+
+        #print (test1)
 
         while not rospy.core.is_shutdown():
             # print("Head sensor array: {}".format(main.touch_data[0]))
@@ -237,28 +272,29 @@ class MiRo_attachment:
             k4 = self.f(1+ self.h, self.prevX + self.h*k3,self.edist,self.pdist)
             self.prevX = self.prevX + self.h*(k1 + 2*k2 + 2*k3 + k4)/6.0
             if (self.A_approach(self.prevX[2]) == 0):
-                print("explore     edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
+                # Explore
+                #print("explore     edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
                 self.edist +=0.01
                 self.pdist +=0.01
                 # self.drive(0.4,0.4)
 
-                ###play
                 self.explore()
+                #print (self.x, self.y, self.theta)
 
 
                 self.counter += 1
 
             else:
-                print("approach   edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
+                # Approach
+                #print("approach   edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
                 self.pdist -= 0.01
                 # self.drive(0,0)
                 # self.drive(0.4,0.4)
                 # print(self.need)
 
-                ###approach
-                #self.approach()
+                self.approach()
 
             try:
                 if self.pdist > 5:
