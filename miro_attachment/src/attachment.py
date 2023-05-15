@@ -87,8 +87,10 @@ class MiRo_attachment:
         # ambivalent av = 0 am >0 am= 0.9 is max
         # higher values will make trait more apparent
 
-        self.epsilonAv = 0.0 # range [-0.1, \infty] 
-        self.epsilonAm = 0.8 # range [-0.1, 0.9]
+        self.param = rospy.get_param('~param')
+        
+        # self.epsilonAv = 0.0 # range [-0.1, \infty] 
+        # self.epsilonAm = 0.0 # range [-0.1, 0.9]
 
         self.b = 0.5
         self.e = 1.0
@@ -99,8 +101,8 @@ class MiRo_attachment:
 
         #-----------------------------------------#
         #approach related init
-
         rospy.sleep(2.0)
+        
         #init initial pose
         #self.theta0 = self.theta
         self.x0 = self.x = 0
@@ -114,13 +116,27 @@ class MiRo_attachment:
         #-----------------------------------------#
         #explore related init
 
-        if self.epsilonAv == 0:
-            if self.epsilonAm == 0:
-                self.attachment = "secure"
-            else:
-                self.attachment = "ambivalent"
-        else:
+        # if self.epsilonAv == 0:
+        #     if self.epsilonAm == 0:
+        #         self.attachment = "secure"
+        #     else:
+        #         self.attachment = "ambivalent"
+        # else:
+        #     self.attachment = "avoidant"
+
+        if self.param == "am":
+            self.attachment = "ambivalent"
+            self.epsilonAv = 0.0 # range [-0.1, \infty] 
+            self.epsilonAm = 0.8 # range [-0.1, 0.9]
+        elif self.param == "av":
             self.attachment = "avoidant"
+            self.epsilonAv = 20.0 # range [-0.1, \infty] 
+            self.epsilonAm = 0.0 # range [-0.1, 0.9]
+        else:
+            self.attachment = "secure"
+            self.epsilonAv = 0.0 # range [-0.1, \infty] 
+            self.epsilonAm = 0.0 # range [-0.1, 0.9]
+
 
         print (self.attachment)
 
@@ -198,24 +214,23 @@ class MiRo_attachment:
     #PUT APPROACH HERE############
     def approach(self):
 
-        print ("approaching")
+        #print ("approaching")
 
         inc_x = self.x0-self.x
         inc_y = self.y0-self.y
 
         angle_to_origin = atan2(inc_y, inc_x)
         if (abs(angle_to_origin - self.theta) > 0.1) and not self.facing_origin:
-            self.drive(self.TURN, 0)
+            self.drive(self.SLOW, 0)
         else:
             self.facing_origin = True
             self.drive(self.FAST, self.FAST)
-            print (inc_x, inc_y)
+            #print (inc_x, inc_y)
             if abs(inc_x) < 0.2 and abs(inc_y) < 0.2:
                 self.on_origin = True
                 self.drive(0, 0)
         
-        rospy.sleep(0.2)
-        print (angle_to_origin, self.theta, angle_to_origin - self.theta)
+        #print (angle_to_origin, self.theta, angle_to_origin - self.theta)
         
 #-----------------------------------------#
     #explore related methods
@@ -260,7 +275,7 @@ class MiRo_attachment:
 
         self.status_code = 0
 
-        #print (test1)
+        
 
         while not rospy.core.is_shutdown():
             # print("Head sensor array: {}".format(main.touch_data[0]))
