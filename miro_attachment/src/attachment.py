@@ -22,7 +22,7 @@ class MiRo_attachment:
     def __init__(self):
         rospy.init_node("attachment_model", anonymous=True)
 
-        rospy.sleep(2.0) #maybe remove
+        #rospy.sleep(2.0) #maybe remove
 
         topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
 
@@ -77,8 +77,8 @@ class MiRo_attachment:
         # ambivalent av = 0 am >0 am= 0.9 is max
         # higher values will make trait more apparent
 
-        self.epsilonAv = 20.0 # range [-0.1, \infty] 
-        self.epsilonAm = 0.0 # range [-0.1, 0.9]
+        self.epsilonAv = 0.0 # range [-0.1, \infty] 
+        self.epsilonAm = 0.5 # range [-0.1, 0.9]
 
         self.b = 0.5
         self.e = 1.0
@@ -99,9 +99,15 @@ class MiRo_attachment:
         #-----------------------------------------#
         #explore related init
 
-        self.attachment = "secure" 
-        #self.attachment = "avoidant"
-        #self.attachment = "ambivalent"
+        if self.epsilonAv == 0:
+            if self.epsilonAm == 0:
+                self.attachment = "secure"
+            else:
+                self.attachment = "ambivalent"
+        else:
+            self.attachment = "avoidant"
+
+        print (self.attachment)
 
 ##############################################################################
 
@@ -164,7 +170,7 @@ class MiRo_attachment:
         
 #-----------------------------------------#
     #explore related methods
-    def play(self):
+    def explore(self):
         if self.rand == 0 or self.rand == 1:
             if self.attachment == "secure":
                 self.drive(self.FAST, self.FAST)
@@ -198,9 +204,12 @@ class MiRo_attachment:
 
         ###play
         # Main control loop iteration counter
+
+        #explore loop counters
         self.counter = 0
         self.rand = 0
         self.timer = 50
+
         # This switch loops through MiRo behaviours:
         # Find ball, lock on to the ball and kick ball
         self.status_code = 0
@@ -228,25 +237,29 @@ class MiRo_attachment:
             k4 = self.f(1+ self.h, self.prevX + self.h*k3,self.edist,self.pdist)
             self.prevX = self.prevX + self.h*(k1 + 2*k2 + 2*k3 + k4)/6.0
             if (self.A_approach(self.prevX[2]) == 0):
-                #print("explore     edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
+                print("explore     edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
                 self.edist +=0.01
                 self.pdist +=0.01
                 # self.drive(0.4,0.4)
 
                 ###play
-                self.play()
+                self.explore()
 
 
                 self.counter += 1
 
             else:
-                #print("approach   edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
+                print("approach   edist= "+str(np.round(self.edist,2))+"   pdist= "+str(np.round(self.pdist,2))+"   Robot Need= "+ str(np.round(self.prevX[2],2)))
 
                 self.pdist -= 0.01
                 # self.drive(0,0)
                 # self.drive(0.4,0.4)
                 # print(self.need)
+
+                ###approach
+                #self.approach()
+
             try:
                 if self.pdist > 5:
                     self.pdist = 5
