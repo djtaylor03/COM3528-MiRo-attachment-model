@@ -1,45 +1,47 @@
 #!/usr/bin/env python3
-
+# imports
+from codecs import ignore_errors
 import os
-from math import radians  # This is used to reset the head pose
-import numpy as np  # Numerical Analysis library
-import cv2  # Computer Vision library
-import random
-import time
+from unittest import skip
+import numpy as np
 
-import rospy  # ROS Python interface
+import rospy
+from geometry_msgs.msg import TwistStamped, Pose2D
 
+# TODO Take in odometry
+# TODO Feed in approach coordinates
+# TODO turn towards the coordinates (need to know where MiRo is facing)
+# TODO move until there
 
-import miro2 as miro  # Import MiRo Developer Kit library
+class ApproachClient:
 
-try:  # For convenience, import this util separately
-    from miro2.lib import wheel_speed2cmd_vel  # Python 3
-except ImportError:
-    from miro2.utils import wheel_speed2cmd_vel  # Python 2
+    def __init__(self) -> None:
 
-class Approach():
-   
-    def __init__(self):
-        # Initialise a new ROS node to communicate with MiRo
+        topic_root = "/" + os.getenv("MIRO_ROBOT_NAME")
         rospy.init_node("approach", anonymous=True)
-        # Give it some time to make sure everything is initialised
-        rospy.sleep(2.0)
-        
-    def loop(self):
-        """
-        Main control loop
-        """
-        print("Miro Approaches")
-        # Main control loop iteration counter
-        self.counter = 0
-        # This switch loops through MiRo behaviours:
-        # Find ball, lock on to the ball and kick ball
-        self.status_code = 0
-        #while not rospy.core.is_shutdown():
 
-            
+        # PUBLISHERS
+        self.pub_cmd_vel = rospy.Publisher(
+            topic_root + "/control/cmd_vel", TwistStamped, queue_size=0
+        )
+
+        # SUBSCRIBERS
+        rospy.Subscriber(
+            # the topic that gives the robot's pose in a 2D space
+            topic_root + "/sensors/body_pose",
+            Pose2D,
+            self.body_pose,
+        )
+
+    def body_pose(self, data):
+        print(data)
+
+    def loop(self):
+        while not rospy.core.is_shutdown():
+            self.body_pose
+
 
 
 if __name__ == "__main__":
-    approach = Approach()  # Instantiate class
-    approach.loop()  # Run the main control loop
+    main = ApproachClient() # Instantiate class
+    main.loop()             # Begin main loop    

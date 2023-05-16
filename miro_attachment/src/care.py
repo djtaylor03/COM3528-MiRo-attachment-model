@@ -18,7 +18,7 @@ import rospy  # ROS Python interface
 from sensor_msgs.msg import CompressedImage  # ROS CompressedImage message
 from sensor_msgs.msg import JointState  # ROS joints state message
 from cv_bridge import CvBridge, CvBridgeError  # ROS -> OpenCV converter
-from geometry_msgs.msg import TwistStamped  # ROS cmd_vel (velocity control) message
+from geometry_msgs.msg import TwistStamped, Pose2D  # ROS cmd_vel (velocity control) message
 from std_msgs.msg import UInt16
 
 
@@ -49,8 +49,8 @@ class MiRoClient:
         # Initialise a new ROS node to communicate with MiRo
         if not self.NODE_EXISTS:
             rospy.init_node("kick_blue_ball", anonymous=True)
-        # Give it some time to make sure everything is initialised
-        rospy.sleep(2.0)
+        # Give it some time to makeros sure everything is initialised
+        rospy.sleep(2.0) #maybe take out
         # Initialise CV Bridge
         # Individual robot name acts as ROS topic prefix
         topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
@@ -65,6 +65,10 @@ class MiRoClient:
             topic_base_name + "/sensors/touch_body",
             UInt16,
             self.callback_body,
+        )
+
+        rospy.Subscriber(
+            topic_base_name + "/sensors/body_pose", Pose2D, self.body_pose
         )
         # Create a new publisher to send velocity commands to the robot
         self.vel_pub = rospy.Publisher(
@@ -93,6 +97,17 @@ class MiRoClient:
         self.edist = 0
         self.pdist = 0
         self.prevX = [-1.0,1.0,-1.0,1.0]
+
+        rospy.sleep(2.0)
+
+        self.theta0 = self.theta
+        self.x0 = self.x
+        self.y0 = self.y
+
+    def body_pose(self, data):
+        self.theta = data.theta
+        self.x = data.x
+        self.y = data.y
 
     def drive(self, speed_l = 0.1,speed_r= 0.1):
         msg_cmd_vel = TwistStamped()
@@ -195,7 +210,7 @@ epsilonAv = 20.0 # range [-0.1, \infty]
 epsilonAm = 0.0 # range [-0.1, 0.9]
 
 #
-#
+#delta
 #
 
 b = 0.5

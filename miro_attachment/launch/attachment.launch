@@ -1,7 +1,7 @@
 <launch>
 <arg name="mode-play" default="true" />
     <group if="$(arg mode-play)">
-        <node pkg="miro_attachment" type="play.py" name="play" output="screen">
+        <node pkg="miro_attachment" type="play2.py" name="play" output="screen">
         </node>
     </group>
     <group unless="$(arg mode-play)">
