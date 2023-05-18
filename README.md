@@ -7,3 +7,17 @@ Leon Joyce,
 Antrea Koulouteri,
 Lisa Smith,
 Daniel Taylor
+
+
+Launch Instructions
+The launch commands for each default attachment type
+secure:
+roslaunch miro_attachment full.launch
+
+avoidant:
+roslaunch miro_attachment full.launch attachment:=av
+
+ambivalent:
+roslaunch miro_attachment full.launch attachment:=am
+
+Parameters am and av can be edited in src/attachment.py if custom values are desired
