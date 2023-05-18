@@ -10,15 +10,16 @@ Daniel Taylor
 
 
 # Launch Instructions
-The launch commands for each default attachment type</br>
-</br>
-secure:</br>
-roslaunch miro_attachment full.launch</br>
+The launch commands for each default attachment type
 
-avoidant:</br>
-roslaunch miro_attachment full.launch attachment:=av</br>
 
-ambivalent:</br>
-roslaunch miro_attachment full.launch attachment:=am</br>
+secure:\
+roslaunch miro_attachment full.launch
+
+avoidant:\
+roslaunch miro_attachment full.launch attachment:=av
+
+ambivalent:\
+roslaunch miro_attachment full.launch attachment:=am
 
 Parameters am and av can be edited in src/attachment.py if custom values are desired
